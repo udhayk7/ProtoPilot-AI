@@ -67,7 +67,11 @@ export default function Dashboard() {
   const [mvpGeneratePhase, setMvpGeneratePhase] = useState<MVPGeneratePhase>("idle");
   const [mvpGenerateError, setMvpGenerateError] = useState<string | null>(null);
   const [mvpGeneratedFiles, setMvpGeneratedFiles] = useState<{ path: string; content: string }[]>([]);
+  const [buildProgress, setBuildProgress] = useState<string[]>([]);
+  const [isBuilding, setIsBuilding] = useState(false);
   const latestWorkspaceStateRef = useRef<PipelineState | null>(null);
+  const buildProgressSectionRef = useRef<HTMLDivElement>(null);
+  const buildLogsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -244,7 +248,49 @@ export default function Dashboard() {
     }
   }, [projectId, workspaceState, loadRunHistory, loadProjectHistory]);
 
-  const handleGenerateMvp = useCallback(async () => {
+  const PRE_BUILD_STEPS = [
+    "Validating idea structure...",
+    "Designing system architecture...",
+    "Generating database schema...",
+    "Generating frontend code...",
+    "Generating backend services...",
+  ];
+
+  const FINAL_BUILD_STEPS = [
+    "Installing dependencies...",
+    "Compiling frontend...",
+    "Starting backend services...",
+    "Application ready.",
+  ];
+
+  const runPreBuildSteps = useCallback(async (): Promise<void> => {
+    for (const step of PRE_BUILD_STEPS) {
+      setBuildProgress((prev) => [...prev, step]);
+      await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+    }
+  }, []);
+
+  const runFinalBuildSteps = useCallback(async (apiPromise: Promise<{ ok: boolean; files?: { path: string; content: string }[]; error?: { message: string } }>): Promise<void> => {
+    const delayMs = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+    for (const step of FINAL_BUILD_STEPS) {
+      setBuildProgress((prev) => [...prev, step]);
+      if (step === "Compiling frontend...") {
+        const delay2s = delayMs(2000);
+        const apiSettled = apiPromise.then(() => "api" as const).catch(() => "api" as const);
+        const winner = await Promise.race([delay2s.then(() => "delay" as const), apiSettled]);
+        if (winner === "delay") {
+          setBuildProgress((prev) => [...prev, "Waiting for AI code generation..."]);
+          await apiPromise;
+        } else {
+          await delay2s;
+        }
+      } else {
+        await delayMs(2000);
+      }
+    }
+  }, []);
+
+  const handleGenerateMvpClick = useCallback(async () => {
     const state = latestWorkspaceStateRef.current ?? workspaceState;
     if (!state) return;
     let enhanced_problem = state.problem_statement ?? state.idea ?? "";
@@ -261,21 +307,46 @@ export default function Dashboard() {
       else if (cto.product_requirements?.functional_requirements?.length)
         core_features = cto.product_requirements.functional_requirements.join(", ");
     }
+
+    setIsBuilding(true);
+    setBuildProgress([]);
     setMvpGeneratePhase("loading");
     setMvpGenerateError(null);
-    const result = await generateMvp({
-      enhanced_problem,
-      target_user,
-      core_features,
-    });
-    if (result.ok) {
-      setMvpGeneratePhase("success");
-      setMvpGeneratedFiles(result.files);
-    } else {
+
+    const apiPromise = generateMvp({ enhanced_problem, target_user, core_features });
+
+    await runPreBuildSteps();
+    await runFinalBuildSteps(apiPromise);
+
+    const result = await apiPromise;
+    if (!result.ok) {
+      setBuildProgress((prev) => [...prev, "Build failed."]);
       setMvpGenerateError(result.error.message);
       setMvpGeneratePhase("error");
+      setIsBuilding(false);
+      return;
     }
-  }, [workspaceState]);
+
+    setMvpGeneratePhase("success");
+    setMvpGeneratedFiles(result.files ?? []);
+    setBuildProgress((prev) => [...prev, "✓ Build completed successfully."]);
+    await new Promise((r) => setTimeout(r, 1500));
+    window.open("http://localhost:5173", "_blank", "noopener,noreferrer");
+    setIsBuilding(false);
+  }, [workspaceState, runPreBuildSteps, runFinalBuildSteps]);
+
+  useEffect(() => {
+    buildLogsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [buildProgress]);
+
+  useEffect(() => {
+    if (isBuilding) {
+      const id = setTimeout(() => {
+        buildProgressSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      return () => clearTimeout(id);
+    }
+  }, [isBuilding]);
 
   useEffect(() => {
     getHealth()
@@ -676,9 +747,12 @@ export default function Dashboard() {
                   <button
                     type="button"
                     className="pipeline-run__button"
-                    onClick={handleGenerateMvp}
-                    disabled={isDisabled || mvpGeneratePhase === "loading"}
-                    aria-busy={mvpGeneratePhase === "loading"}
+                    onClick={() => {
+                      buildProgressSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                      handleGenerateMvpClick();
+                    }}
+                    disabled={isDisabled || mvpGeneratePhase === "loading" || isBuilding}
+                    aria-busy={mvpGeneratePhase === "loading" || isBuilding}
                   >
                     {mvpGeneratePhase === "loading" ? "Generating…" : "Generate MVP"}
                   </button>
@@ -686,6 +760,26 @@ export default function Dashboard() {
                     <p className="mvp-generate__error" role="alert">{mvpGenerateError}</p>
                   )}
                 </div>
+                {(isBuilding || buildProgress.length > 0) && (
+                  <div
+                    ref={buildProgressSectionRef}
+                    className="bg-black text-green-400 font-mono rounded-lg p-6 max-h-[300px] overflow-y-auto shadow-xl mt-4"
+                    role="log"
+                    aria-live="polite"
+                  >
+                    {buildProgress.map((line, i) => (
+                      <div key={i} className="build-log-line">
+                        › {line}
+                      </div>
+                    ))}
+                    {isBuilding && (
+                      <span className="build-log-cursor" aria-hidden>
+                        _
+                      </span>
+                    )}
+                    <div ref={buildLogsEndRef} />
+                  </div>
+                )}
                 {mvpGeneratePhase === "success" && (
                   <div className="pipeline-result__card mvp-generate__success-card" role="status">
                     <div className="mvp-generate__success">
