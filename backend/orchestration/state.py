@@ -19,7 +19,13 @@ class IdeaState(BaseModel):
     key_features: Optional[str] = None
     budget: Optional[str] = None
     timeline: Optional[str] = None
-    enhanced_idea: Optional[str] = None  # Strategist output: refined idea from vague input
+    preferred_frontend: Optional[str] = None
+    preferred_backend: Optional[str] = None
+    preferred_database: Optional[str] = None
+    preferred_ai_model: Optional[str] = None
+    deployment_preference: Optional[str] = None
+    scalability_level: Optional[str] = None
+    enhanced_idea: Optional[str] = None  # Strategist output (SOW+PRD JSON)
 
     class Config:
         extra = "allow"

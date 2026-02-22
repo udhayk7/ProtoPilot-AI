@@ -49,80 +49,86 @@ class AgentOutputBase(BaseModel):
         extra = "forbid"  # Reject unknown keys from LLM output
 
 
-# --- CTO / Business Strategy output (Strategist) ---
+# --- Strategist output: SOW + PRD (no business/pricing/cost) ---
 
 
-class EnhancedIdeaBlock(BaseModel):
-    """Refined idea block from CTO Strategy agent."""
+class SolutionBriefBlock(BaseModel):
+    """Solution brief from Strategist."""
 
-    problem: str = ""
-    target_user: str = ""
-    core_features: List[str] = []
-
-    class Config:
-        extra = "allow"
-
-
-class MarketAnalysisBlock(BaseModel):
-    """Market analysis from CTO Strategy agent."""
-
-    competitors: List[str] = []
-    market_gap: str = ""
+    problem_summary: str = ""
+    solution_overview: List[str] = []
+    target_users: List[str] = []
+    key_differentiators: List[str] = []
 
     class Config:
         extra = "allow"
 
 
-class BusinessModelBlock(BaseModel):
-    """Business model from CTO Strategy agent."""
+class MilestoneItem(BaseModel):
+    """Single milestone in SOW."""
 
-    revenue_streams: List[str] = []
-    pricing_strategy: str = ""
-    cost_structure: List[str] = []
-
-    class Config:
-        extra = "allow"
-
-
-class RiskAnalysisBlock(BaseModel):
-    """Risk analysis from CTO Strategy agent."""
-
-    technical_risk: str = ""
-    market_risk: str = ""
-    regulatory_risk: str = ""
+    phase: str = ""
+    description: str = ""
+    deliverables: List[str] = []
 
     class Config:
         extra = "allow"
 
 
-class ArchitectureBlock(BaseModel):
-    """Architecture recommendation from CTO Strategy agent."""
+class StatementOfWorkBlock(BaseModel):
+    """Statement of work from Strategist."""
 
-    frontend: str = "Next.js"
-    backend: str = "FastAPI"
-    database: str = "SQLite"
-    justification: str = ""
+    scope_of_work: List[str] = []
+    in_scope_deliverables: List[str] = []
+    out_of_scope: List[str] = []
+    assumptions: List[str] = []
+    milestones: List[MilestoneItem] = []
+    acceptance_criteria: List[str] = []
+
+    class Config:
+        extra = "allow"
+
+
+class TechStackBlock(BaseModel):
+    """Tech stack from PRD."""
+
+    frontend: str = ""
+    backend: str = ""
+    database: str = ""
+    ai_components: str = ""
+    deployment: str = ""
+
+    class Config:
+        extra = "allow"
+
+
+class ProductRequirementsBlock(BaseModel):
+    """Product requirements from Strategist."""
+
+    functional_requirements: List[str] = []
+    non_functional_requirements: List[str] = []
+    architecture_summary: str = ""
+    tech_stack: TechStackBlock = Field(default_factory=TechStackBlock)
+    success_metrics: List[str] = []
 
     class Config:
         extra = "allow"
 
 
 class CTOStrategyOutput(BaseModel):
-    """Full CTO/Business Strategy agent output. Validated then merged into state."""
+    """Strategist output: SOW + PRD. No pricing, cost, or revenue."""
 
-    enhanced_idea: EnhancedIdeaBlock
-    market_analysis: MarketAnalysisBlock
-    business_model: BusinessModelBlock
-    risk_analysis: RiskAnalysisBlock
-    architecture: ArchitectureBlock
-    feasibility_score: int = Field(..., ge=0, le=100)
+    solution_brief: SolutionBriefBlock = Field(default_factory=SolutionBriefBlock)
+    statement_of_work: StatementOfWorkBlock = Field(default_factory=StatementOfWorkBlock)
+    product_requirements: ProductRequirementsBlock = Field(default_factory=ProductRequirementsBlock)
+    feasibility_score: int = Field(default=0, ge=0, le=100)
 
     class Config:
         extra = "allow"
 
 
 class StrategistOutput(CTOStrategyOutput):
-    """Strategist uses CTO/Business Strategy format. Alias for pipeline validation."""
+    """Strategist uses SOW+PRD format. Alias for pipeline validation."""
 
     pass
 

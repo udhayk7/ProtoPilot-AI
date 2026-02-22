@@ -7,7 +7,6 @@ import {
   type PipelineRunSummary,
   type PipelineState,
   type Project,
-  type Sprint,
   EMPTY_PROJECT_STATE,
   createProject,
   generateMvp,
@@ -216,6 +215,12 @@ export default function Dashboard() {
       key_features: workspaceState.key_features ?? null,
       budget: workspaceState.budget ?? null,
       timeline: workspaceState.timeline ?? null,
+      preferred_frontend: workspaceState.preferred_frontend ?? null,
+      preferred_backend: workspaceState.preferred_backend ?? null,
+      preferred_database: workspaceState.preferred_database ?? null,
+      preferred_ai_model: workspaceState.preferred_ai_model ?? null,
+      deployment_preference: workspaceState.deployment_preference ?? null,
+      scalability_level: workspaceState.scalability_level ?? null,
     };
     const result = await runPipeline(payload);
     if (result.ok) {
@@ -246,12 +251,15 @@ export default function Dashboard() {
     let target_user = state.target_audience ?? "";
     let core_features = state.key_features ?? "";
     const cto = parseCTOStrategy(state.enhanced_idea ?? null);
-    if (cto?.enhanced_idea) {
-      enhanced_problem = cto.enhanced_idea.problem || enhanced_problem;
-      target_user = cto.enhanced_idea.target_user || target_user;
-      core_features = Array.isArray(cto.enhanced_idea.core_features)
-        ? cto.enhanced_idea.core_features.join(", ")
-        : core_features;
+    if (cto?.solution_brief) {
+      enhanced_problem = cto.solution_brief.problem_summary || enhanced_problem;
+      target_user = Array.isArray(cto.solution_brief.target_users)
+        ? cto.solution_brief.target_users.join(", ")
+        : target_user;
+      const overview = cto.solution_brief.solution_overview;
+      if (overview?.length) core_features = overview.join(", ");
+      else if (cto.product_requirements?.functional_requirements?.length)
+        core_features = cto.product_requirements.functional_requirements.join(", ");
     }
     setMvpGeneratePhase("loading");
     setMvpGenerateError(null);
@@ -308,8 +316,6 @@ export default function Dashboard() {
   const isPipelineLoading = pipelinePhase === "loading";
   const isViewingHistory = viewingRunId != null;
   const isDisabled = isWorkspaceLoading || isWorkspaceSaving || isPipelineLoading || isViewingHistory;
-
-  const sprints: Sprint[] = workspaceState?.sprints ?? [];
 
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
@@ -460,33 +466,37 @@ export default function Dashboard() {
 
         {(workspacePhase === "active" || workspacePhase === "saving") && workspaceState && (
           <>
-            <section className="panel panel--full pipeline-run">
-              <h2 className="panel__title">Idea</h2>
-              <div className="pipeline-run__form">
-                <label className="pipeline-run__label">
+            <section className="bg-white rounded-lg border border-gray-200 p-10" aria-labelledby="idea-config-heading">
+              <h2 id="idea-config-heading" className="text-3xl font-semibold text-gray-900 m-0 mb-1">Idea Configuration</h2>
+              <p className="text-gray-500 m-0 mb-10">Define business requirements and technical preferences</p>
+
+              {/* Business Requirements */}
+              <p className="uppercase text-xs tracking-wider text-gray-400 mb-4">Business Requirements</p>
+              <div className="mb-8">
+                <label className="block mb-2 font-medium text-gray-700 text-sm">
                   Problem statement
-                  <textarea
-                    className="pipeline-run__input"
-                    placeholder="Describe your idea or problem statement…"
-                    value={workspaceState.problem_statement ?? workspaceState.idea ?? ""}
-                    onChange={(e) =>
-                      handleEditState({
-                        problem_statement: e.target.value || null,
-                        idea: e.target.value || null,
-                      })
-                    }
-                    onBlur={handleBlurSave}
-                    rows={3}
-                    disabled={isDisabled}
-                    aria-label="Problem statement"
-                  />
                 </label>
-                <div className="pipeline-run__row">
-                  <label className="pipeline-run__label">
-                    Target audience
+                <textarea
+                  className="idea-input w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg resize-y focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed min-h-[140px] mb-8"
+                  placeholder="Describe your idea or problem statement…"
+                  value={workspaceState.problem_statement ?? workspaceState.idea ?? ""}
+                  onChange={(e) =>
+                    handleEditState({
+                      problem_statement: e.target.value || null,
+                      idea: e.target.value || null,
+                    })
+                  }
+                  onBlur={handleBlurSave}
+                  rows={5}
+                  disabled={isDisabled}
+                  aria-label="Problem statement"
+                />
+                <div className="grid grid-cols-2 gap-8">
+                  <label className="block">
+                    <span className="block mb-2 font-medium text-gray-700 text-sm">Target audience</span>
                     <input
                       type="text"
-                      className="pipeline-run__input pipeline-run__input--inline"
+                      className="idea-input w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
                       placeholder="Who is it for?"
                       value={workspaceState.target_audience ?? ""}
                       onChange={(e) => handleEditState({ target_audience: e.target.value || null })}
@@ -494,11 +504,11 @@ export default function Dashboard() {
                       disabled={isDisabled}
                     />
                   </label>
-                  <label className="pipeline-run__label">
-                    Key features
+                  <label className="block">
+                    <span className="block mb-2 font-medium text-gray-700 text-sm">Key features</span>
                     <input
                       type="text"
-                      className="pipeline-run__input pipeline-run__input--inline"
+                      className="idea-input w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
                       placeholder="Core features"
                       value={workspaceState.key_features ?? ""}
                       onChange={(e) => handleEditState({ key_features: e.target.value || null })}
@@ -507,60 +517,142 @@ export default function Dashboard() {
                     />
                   </label>
                 </div>
-                <div className="pipeline-run__row">
-                  <label className="pipeline-run__label">
-                    Budget
-                    <input
-                      type="text"
-                      className="pipeline-run__input pipeline-run__input--inline"
-                      placeholder="Budget constraints"
-                      value={workspaceState.budget ?? ""}
-                      onChange={(e) => handleEditState({ budget: e.target.value || null })}
-                      onBlur={handleBlurSave}
-                      disabled={isDisabled}
-                    />
-                  </label>
-                  <label className="pipeline-run__label">
-                    Timeline
-                    <input
-                      type="text"
-                      className="pipeline-run__input pipeline-run__input--inline"
-                      placeholder="Delivery timeline"
-                      value={workspaceState.timeline ?? ""}
-                      onChange={(e) => handleEditState({ timeline: e.target.value || null })}
-                      onBlur={handleBlurSave}
-                      disabled={isDisabled}
-                    />
-                  </label>
-                </div>
               </div>
-              <div className="pipeline-run__actions">
+
+              {/* Technical Preferences */}
+              <p className="uppercase text-xs tracking-wider text-gray-400 mt-12 mb-4">Technical Preferences</p>
+              <div className="grid grid-cols-2 gap-8">
+                <label className="block">
+                  <span className="block mb-2 font-medium text-gray-700 text-sm">Preferred frontend</span>
+                  <select
+                    className="idea-select w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
+                        value={workspaceState.preferred_frontend ?? ""}
+                        onChange={(e) => handleEditState({ preferred_frontend: e.target.value || null })}
+                        onBlur={handleBlurSave}
+                        disabled={isDisabled}
+                        aria-label="Preferred frontend"
+                      >
+                        <option value="">No Preference</option>
+                        <option value="React">React</option>
+                        <option value="Next.js">Next.js</option>
+                        <option value="Vue">Vue</option>
+                        <option value="Flutter">Flutter</option>
+                        <option value="React Native">React Native</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="block mb-2 font-medium text-gray-700 text-sm">Preferred backend</span>
+                      <select
+                        className="idea-select w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
+                        value={workspaceState.preferred_backend ?? ""}
+                        onChange={(e) => handleEditState({ preferred_backend: e.target.value || null })}
+                        onBlur={handleBlurSave}
+                        disabled={isDisabled}
+                        aria-label="Preferred backend"
+                      >
+                        <option value="">No Preference</option>
+                        <option value="FastAPI">FastAPI</option>
+                        <option value="Node.js (Express)">Node.js (Express)</option>
+                        <option value="Django">Django</option>
+                        <option value="Spring Boot">Spring Boot</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="block mb-2 font-medium text-gray-700 text-sm">Preferred database</span>
+                      <select
+                        className="idea-select w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
+                        value={workspaceState.preferred_database ?? ""}
+                        onChange={(e) => handleEditState({ preferred_database: e.target.value || null })}
+                        onBlur={handleBlurSave}
+                        disabled={isDisabled}
+                        aria-label="Preferred database"
+                      >
+                        <option value="">No Preference</option>
+                        <option value="PostgreSQL">PostgreSQL</option>
+                        <option value="MySQL">MySQL</option>
+                        <option value="SQLite">SQLite</option>
+                        <option value="MongoDB">MongoDB</option>
+                        <option value="Supabase">Supabase</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="block mb-2 font-medium text-gray-700 text-sm">Preferred AI model</span>
+                      <select
+                        className="idea-select w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
+                        value={workspaceState.preferred_ai_model ?? ""}
+                        onChange={(e) => handleEditState({ preferred_ai_model: e.target.value || null })}
+                        onBlur={handleBlurSave}
+                        disabled={isDisabled}
+                        aria-label="Preferred AI model"
+                      >
+                        <option value="">No Preference</option>
+                        <option value="OpenAI">OpenAI</option>
+                        <option value="Anthropic (Claude)">Anthropic (Claude)</option>
+                        <option value="Gemini">Gemini</option>
+                        <option value="Qwen">Qwen</option>
+                        <option value="Local Model">Local Model</option>
+                        <option value="No AI Required">No AI Required</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="block mb-2 font-medium text-gray-700 text-sm">Deployment preference</span>
+                      <select
+                        className="idea-select w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
+                        value={workspaceState.deployment_preference ?? ""}
+                        onChange={(e) => handleEditState({ deployment_preference: e.target.value || null })}
+                        onBlur={handleBlurSave}
+                        disabled={isDisabled}
+                        aria-label="Deployment preference"
+                      >
+                        <option value="">No Preference</option>
+                        <option value="Vercel">Vercel</option>
+                        <option value="AWS">AWS</option>
+                        <option value="Docker">Docker</option>
+                        <option value="Firebase">Firebase</option>
+                        <option value="On-Premise">On-Premise</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="block mb-2 font-medium text-gray-700 text-sm">Scalability level</span>
+                      <select
+                        className="idea-select w-full px-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed h-11"
+                        value={workspaceState.scalability_level ?? "MVP"}
+                        onChange={(e) => handleEditState({ scalability_level: e.target.value || null })}
+                        onBlur={handleBlurSave}
+                        disabled={isDisabled}
+                        aria-label="Scalability level"
+                      >
+                        <option value="MVP">MVP</option>
+                        <option value="Moderate Scale">Moderate Scale</option>
+                        <option value="High Scale">High Scale</option>
+                        <option value="Enterprise Grade">Enterprise Grade</option>
+                      </select>
+                    </label>
+              </div>
+
+              {/* Button area */}
+              <div className="flex justify-end mt-10">
+                {isWorkspaceSaving && (
+                  <span className="text-sm text-gray-500 mr-4 self-center" aria-live="polite">Saving…</span>
+                )}
                 <button
                   type="button"
-                  className="pipeline-run__button"
+                  className="px-8 py-3 rounded-md bg-black text-white hover:bg-gray-800 transition disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-black"
                   onClick={handleRunPipeline}
                   disabled={isDisabled}
                   aria-busy={isPipelineLoading}
                 >
                   {isPipelineLoading ? "Running…" : "Run Pipeline"}
                 </button>
-                {isWorkspaceSaving && (
-                  <span className="pipeline-run__loading" aria-live="polite">
-                    Saving…
-                  </span>
-                )}
               </div>
             </section>
 
-            <div className="pipeline-result">
-              <section className="pipeline-result__section" aria-labelledby="strategy-heading">
-                <h2 id="strategy-heading" className="pipeline-result__heading">
+            <div className="pipeline-result mt-10">
+              <section className="pipeline-result__section pipeline-result__section--strategy" aria-labelledby="strategy-heading">
+                <h2 id="strategy-heading" className="pipeline-result__heading pipeline-result__heading--executive">
                   Strategy & Feasibility
                 </h2>
-                <p className="enhanced-idea__hint">
-                  Refined problem, market, business model, risks, architecture and feasibility score.
-                </p>
-                <div className="pipeline-result__card">
+                <div className="pipeline-result__card pipeline-result__card--strategy">
                   <CTOStrategyView
                     enhancedIdea={workspaceState.enhanced_idea ?? null}
                     emptyMessage="Run the pipeline to generate strategy and feasibility analysis."
@@ -569,8 +661,8 @@ export default function Dashboard() {
               </section>
 
               <ExecutionSection
-                architectureContent={workspaceState?.architecture_model ?? null}
-                sprints={sprints}
+                strategyJson={workspaceState?.enhanced_idea ?? null}
+                scalabilityLevel={workspaceState?.scalability_level ?? null}
               />
 
               <section className="pipeline-result__section mvp-section" aria-labelledby="mvp-heading">

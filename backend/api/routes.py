@@ -27,6 +27,7 @@ from core.schemas import ErrorDetail, HealthResponse, StructuredErrorResponse
 from core.supabase_client import get_supabase, get_supabase_or_raise
 from orchestration.pipeline import PipelineRunner
 from orchestration.state import IdeaState
+from services.architecture_generator import generate_architecture_diagram
 from services.mvp_generator import generate_mvp_files, start_generated_mvp_servers, write_mvp_files
 from services.mvp_improver import improve_mvp_files
 
@@ -283,6 +284,12 @@ class PipelineRunBody(BaseModel):
     key_features: Optional[str] = None
     budget: Optional[str] = None
     timeline: Optional[str] = None
+    preferred_frontend: Optional[str] = None
+    preferred_backend: Optional[str] = None
+    preferred_database: Optional[str] = None
+    preferred_ai_model: Optional[str] = None
+    deployment_preference: Optional[str] = None
+    scalability_level: Optional[str] = None
 
     class Config:
         extra = "allow"
@@ -305,6 +312,12 @@ async def run_pipeline(body: PipelineRunBody, supabase=Depends(_get_supabase)):
         key_features=body.key_features or idea.key_features,
         budget=body.budget or idea.budget,
         timeline=body.timeline or idea.timeline,
+        preferred_frontend=body.preferred_frontend,
+        preferred_backend=body.preferred_backend,
+        preferred_database=body.preferred_database,
+        preferred_ai_model=body.preferred_ai_model,
+        deployment_preference=body.deployment_preference,
+        scalability_level=body.scalability_level,
     )
     runner = PipelineRunner()
     result = await runner.run(state, supabase=supabase, pipeline_run_id=run_id)
@@ -342,6 +355,34 @@ async def get_sprints_route(idea_id: str, supabase=Depends(_get_supabase)):
             }
         )
     return {"sprints": out}
+
+
+# --- Architecture diagram (OpenRouter gpt-oss-120b, ASCII only) ---
+
+
+class ArchitectureGenerateBody(BaseModel):
+    strategy_json: str = ""
+    scalability_level: Optional[str] = None
+
+
+@router.post("/architecture/generate", tags=["architecture"])
+async def architecture_generate_route(body: ArchitectureGenerateBody):
+    """Generate ASCII architecture diagram from strategy. Uses openai/gpt-oss-120b."""
+    if not (body.strategy_json or "").strip():
+        raise HTTPException(status_code=422, detail="strategy_json is required")
+    try:
+        import json as _json
+        data = _json.loads(body.strategy_json)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Invalid strategy_json: {e}")
+    try:
+        diagram = await generate_architecture_diagram(
+            data,
+            scalability_level=body.scalability_level,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return {"diagram": diagram}
 
 
 # --- MVP generation (LLM → files JSON → write to disk) ---

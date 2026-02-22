@@ -39,14 +39,7 @@ export default function MVPGeneration({ structure, structureText }: Props) {
   const hasText = structureText && structureText.trim() !== "";
 
   if (!hasStructure && !hasText) {
-    return (
-      <div className="mvp-generation">
-        <p className="mvp-generation__empty">
-          Run the pipeline to generate MVP structure. The folder and file layout will appear here.
-        </p>
-        <p className="mvp-generation__hint">Similar to Lovable — a visual project tree of your MVP build.</p>
-      </div>
-    );
+    return null;
   }
 
   if (hasText) {

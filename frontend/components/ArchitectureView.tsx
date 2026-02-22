@@ -1,30 +1,51 @@
+"use client";
+
 type Props = {
-  content?: string | null;
+  diagram?: string | null;
+  loading?: boolean;
+  error?: string | null;
+  hasStrategy?: boolean;
 };
 
-export default function ArchitectureView({ content }: Props) {
-  if (!content || content.trim() === "") {
+export default function ArchitectureView({
+  diagram,
+  loading = false,
+  error = null,
+  hasStrategy = false,
+}: Props) {
+  if (!hasStrategy) {
     return (
-      <div>
-        <p style={{ margin: 0, color: "#666", fontSize: "0.9rem" }}>
-          Run the pipeline to generate the architecture overview. Diagrams and system overview will render here.
+      <div className="architecture-view architecture-view--empty">
+        <p className="architecture-view__empty-text">
+          Run the pipeline to generate strategy. The architecture diagram will appear here.
         </p>
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="architecture-view architecture-view--loading">
+        <p className="architecture-view__loading-text">Generating architecture diagram…</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="architecture-view architecture-view--error">
+        <p className="architecture-view__error-text">{error}</p>
+      </div>
+    );
+  }
+  if (!diagram || !diagram.trim()) {
+    return (
+      <div className="architecture-view architecture-view--empty">
+        <p className="architecture-view__empty-text">No diagram generated.</p>
       </div>
     );
   }
   return (
     <div className="architecture-view">
-      <pre
-        style={{
-          margin: 0,
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          fontSize: "0.9rem",
-          lineHeight: 1.5,
-        }}
-      >
-        {content}
-      </pre>
+      <pre className="architecture-view__pre">{diagram}</pre>
     </div>
   );
 }

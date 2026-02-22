@@ -20,6 +20,12 @@ export interface IdeaStatePayload {
   key_features?: string | null;
   budget?: string | null;
   timeline?: string | null;
+  preferred_frontend?: string | null;
+  preferred_backend?: string | null;
+  preferred_database?: string | null;
+  preferred_ai_model?: string | null;
+  deployment_preference?: string | null;
+  scalability_level?: string | null;
 }
 
 export interface Task {
@@ -47,6 +53,12 @@ export interface PipelineState {
   key_features?: string | null;
   budget?: string | null;
   timeline?: string | null;
+  preferred_frontend?: string | null;
+  preferred_backend?: string | null;
+  preferred_database?: string | null;
+  preferred_ai_model?: string | null;
+  deployment_preference?: string | null;
+  scalability_level?: string | null;
   enhanced_idea?: string | null;
   product_model?: string | null;
   architecture_model?: string | null;
@@ -291,6 +303,40 @@ export async function improveMvp(payload: MVPImprovePayload): Promise<MVPImprove
   return { ok: false, error: { message, agent_name: null } };
 }
 
+export interface ArchitectureGeneratePayload {
+  strategy_json: string;
+  scalability_level?: string | null;
+}
+
+export type ArchitectureGenerateResult =
+  | { ok: true; diagram: string }
+  | { ok: false; error: ApiError };
+
+export async function generateArchitectureDiagram(
+  payload: ArchitectureGeneratePayload
+): Promise<ArchitectureGenerateResult> {
+  const res = await fetch(`${API_BASE}/api/architecture/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      strategy_json: payload.strategy_json,
+      scalability_level: payload.scalability_level ?? undefined,
+    }),
+  });
+  if (res.ok) {
+    const body = (await res.json()) as { diagram?: string };
+    return { ok: true, diagram: body.diagram ?? "" };
+  }
+  let message = `Request failed (${res.status})`;
+  try {
+    const data = (await res.json()) as { detail?: string };
+    if (typeof data?.detail === "string") message = data.detail;
+  } catch {
+    /* ignore */
+  }
+  return { ok: false, error: { message, agent_name: null } };
+}
+
 /** Empty state for new projects with no revisions. */
 export const EMPTY_PROJECT_STATE: PipelineState = {
   idea_id: null,
@@ -300,6 +346,12 @@ export const EMPTY_PROJECT_STATE: PipelineState = {
   key_features: null,
   budget: null,
   timeline: null,
+  preferred_frontend: null,
+  preferred_backend: null,
+  preferred_database: null,
+  preferred_ai_model: null,
+  deployment_preference: null,
+  scalability_level: null,
   enhanced_idea: null,
   product_model: null,
   architecture_model: null,
