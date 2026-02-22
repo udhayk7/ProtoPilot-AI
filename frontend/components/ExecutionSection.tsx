@@ -7,9 +7,22 @@ import ArchitectureView from "./ArchitectureView";
 type Props = {
   strategyJson: string | null;
   scalabilityLevel?: string | null;
+  preferredFrontend?: string | null;
+  preferredBackend?: string | null;
+  preferredDatabase?: string | null;
+  preferredAiModel?: string | null;
+  deploymentPreference?: string | null;
 };
 
-export default function ExecutionSection({ strategyJson, scalabilityLevel }: Props) {
+export default function ExecutionSection({
+  strategyJson,
+  scalabilityLevel,
+  preferredFrontend,
+  preferredBackend,
+  preferredDatabase,
+  preferredAiModel,
+  deploymentPreference,
+}: Props) {
   const [diagram, setDiagram] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +34,11 @@ export default function ExecutionSection({ strategyJson, scalabilityLevel }: Pro
     const result = await generateArchitectureDiagram({
       strategy_json: strategyJson!,
       scalability_level: scalabilityLevel ?? undefined,
+      preferred_frontend: preferredFrontend ?? undefined,
+      preferred_backend: preferredBackend ?? undefined,
+      preferred_database: preferredDatabase ?? undefined,
+      preferred_ai_model: preferredAiModel ?? undefined,
+      deployment_preference: deploymentPreference ?? undefined,
     });
     setLoading(false);
     if (result.ok) {
@@ -28,12 +46,28 @@ export default function ExecutionSection({ strategyJson, scalabilityLevel }: Pro
     } else {
       setError(result.error?.message ?? "Failed to generate diagram");
     }
-  }, [strategyJson, scalabilityLevel]);
+  }, [
+    strategyJson,
+    scalabilityLevel,
+    preferredFrontend,
+    preferredBackend,
+    preferredDatabase,
+    preferredAiModel,
+    deploymentPreference,
+  ]);
 
   useEffect(() => {
     setDiagram(null);
     setError(null);
-  }, [strategyJson]);
+  }, [
+    strategyJson,
+    scalabilityLevel,
+    preferredFrontend,
+    preferredBackend,
+    preferredDatabase,
+    preferredAiModel,
+    deploymentPreference,
+  ]);
 
   useEffect(() => {
     if ((strategyJson ?? "").trim() && diagram === null && !loading) {

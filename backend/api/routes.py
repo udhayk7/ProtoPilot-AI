@@ -363,11 +363,16 @@ async def get_sprints_route(idea_id: str, supabase=Depends(_get_supabase)):
 class ArchitectureGenerateBody(BaseModel):
     strategy_json: str = ""
     scalability_level: Optional[str] = None
+    preferred_frontend: Optional[str] = None
+    preferred_backend: Optional[str] = None
+    preferred_database: Optional[str] = None
+    preferred_ai_model: Optional[str] = None
+    deployment_preference: Optional[str] = None
 
 
 @router.post("/architecture/generate", tags=["architecture"])
 async def architecture_generate_route(body: ArchitectureGenerateBody):
-    """Generate ASCII architecture diagram from strategy. Uses openai/gpt-oss-120b."""
+    """Generate deterministic ASCII architecture diagram from strategy + tech stack."""
     if not (body.strategy_json or "").strip():
         raise HTTPException(status_code=422, detail="strategy_json is required")
     try:
@@ -379,6 +384,11 @@ async def architecture_generate_route(body: ArchitectureGenerateBody):
         diagram = await generate_architecture_diagram(
             data,
             scalability_level=body.scalability_level,
+            preferred_frontend=body.preferred_frontend,
+            preferred_backend=body.preferred_backend,
+            preferred_database=body.preferred_database,
+            preferred_ai_model=body.preferred_ai_model,
+            deployment_preference=body.deployment_preference,
         )
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))

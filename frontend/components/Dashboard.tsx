@@ -25,6 +25,7 @@ import MVPGeneratedView from "./MVPGeneratedView";
 import MVPGeneration, { type FileNode } from "./MVPGeneration";
 
 const PROJECT_ID_KEY = "protopilot_project_id";
+const DEMO_URL = "http://localhost:5180";
 
 type WorkspacePhase = "no_project" | "active" | "loading" | "saving" | "error";
 type PipelinePhase = "idle" | "loading" | "success" | "error";
@@ -331,7 +332,7 @@ export default function Dashboard() {
     setMvpGeneratedFiles(result.files ?? []);
     setBuildProgress((prev) => [...prev, "✓ Build completed successfully."]);
     await new Promise((r) => setTimeout(r, 1500));
-    window.open("http://localhost:5173", "_blank", "noopener,noreferrer");
+    window.open(DEMO_URL, "_blank", "noopener,noreferrer");
     setIsBuilding(false);
   }, [workspaceState, runPreBuildSteps, runFinalBuildSteps]);
 
@@ -734,6 +735,11 @@ export default function Dashboard() {
               <ExecutionSection
                 strategyJson={workspaceState?.enhanced_idea ?? null}
                 scalabilityLevel={workspaceState?.scalability_level ?? null}
+                preferredFrontend={workspaceState?.preferred_frontend ?? null}
+                preferredBackend={workspaceState?.preferred_backend ?? null}
+                preferredDatabase={workspaceState?.preferred_database ?? null}
+                preferredAiModel={workspaceState?.preferred_ai_model ?? null}
+                deploymentPreference={workspaceState?.deployment_preference ?? null}
               />
 
               <section className="pipeline-result__section mvp-section" aria-labelledby="mvp-heading">
@@ -785,7 +791,7 @@ export default function Dashboard() {
                     <div className="mvp-generate__success">
                       <p><strong>Generated.</strong> Files are in <code>generated-mvp/</code>. The app is starting automatically.</p>
                       <p className="mvp-generate__open-hint">
-                        Wait 10–15 seconds, then click the button below to open your app at <code>http://localhost:5173</code>. If the link does not work, run manually in two terminals:
+                        Wait 10–15 seconds, then click the button below to open your app at <code>{DEMO_URL}</code>. If the link does not work, run manually in two terminals:
                       </p>
                       <p className="mvp-generate__steps">
                         <code>cd generated-mvp/backend && python3 -m uvicorn main:app --reload --port 8001</code>
@@ -795,7 +801,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <a
-                      href="http://localhost:5173"
+                      href={DEMO_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="workspace__new-btn workspace__new-btn--primary mvp-generate__open-btn"

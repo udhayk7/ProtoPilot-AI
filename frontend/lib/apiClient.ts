@@ -306,6 +306,11 @@ export async function improveMvp(payload: MVPImprovePayload): Promise<MVPImprove
 export interface ArchitectureGeneratePayload {
   strategy_json: string;
   scalability_level?: string | null;
+  preferred_frontend?: string | null;
+  preferred_backend?: string | null;
+  preferred_database?: string | null;
+  preferred_ai_model?: string | null;
+  deployment_preference?: string | null;
 }
 
 export type ArchitectureGenerateResult =
@@ -321,6 +326,11 @@ export async function generateArchitectureDiagram(
     body: JSON.stringify({
       strategy_json: payload.strategy_json,
       scalability_level: payload.scalability_level ?? undefined,
+      preferred_frontend: payload.preferred_frontend ?? undefined,
+      preferred_backend: payload.preferred_backend ?? undefined,
+      preferred_database: payload.preferred_database ?? undefined,
+      preferred_ai_model: payload.preferred_ai_model ?? undefined,
+      deployment_preference: payload.deployment_preference ?? undefined,
     }),
   });
   if (res.ok) {
